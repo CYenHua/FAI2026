@@ -19,6 +19,9 @@ files and classes when code is run, so be careful to not modify anything else.
 # maze is a Maze object based on the maze from the file specified by input filename
 # searchMethod is the search method specified by --method flag (bfs,dfs,astar,astar_multi,fast)
 
+import heapq
+from functools import lru_cache
+
 def search(maze, searchMethod):
     return {
         "bfs": bfs,
@@ -27,6 +30,16 @@ def search(maze, searchMethod):
         "astar_multi": astar_multi,
         "fast": fast,
     }.get(searchMethod)(maze)
+
+def construct_path(parent, current_state):
+    path = []
+    while current_state is not None:
+        if isinstance(current_state, tuple) and isinstance(current_state[0], tuple):
+            path.append(current_state[0])
+        else:
+            path.append(current_state)
+        current_state = parent[current_state]
+    return path[::-1]
 
 def bfs(maze):
     """
@@ -38,18 +51,49 @@ def bfs(maze):
     """
     # TODO: Write your code here
     start = maze.getStart()
-    queue = [(start, [start])]
-    visited = set([start])
+    queue = [start]
+    parent = {start: None}
     while queue:
-        (current, path) = queue.pop(0)
-        if maze.isObjective(current[0], current[1]):
-            return path
+        current = queue.pop(0)
+        if(maze.isObjective(current[0], current[1])):
+            return construct_path(parent, current)
         for neighbor in maze.getNeighbors(current[0], current[1]):
-            if neighbor not in visited:
-                visited.add(neighbor)
-                queue.append((neighbor, path + [neighbor]))
+            if neighbor not in parent:
+                parent[neighbor] = current
+                queue.append(neighbor)
 
     return []
+
+def Manhattan(x, y):
+    return abs(x[0] - y[0]) + abs(x[1] - y[1])
+
+@lru_cache(maxsize=None)
+def MST(goals):
+    if(len(goals) <= 1):
+        return 0
+    min_weight = 0
+    unvisited = list(goals)
+    start_node = unvisited.pop(0)
+
+    distance = [Manhattan(start_node, u) for u in unvisited]
+    while(unvisited):
+        min_edge = min(distance)
+        min_idx = distance.index(min_edge)
+        new_node = unvisited.pop(min_idx)
+        distance.pop(min_idx)
+        
+        for i, target in enumerate(unvisited):
+            d = Manhattan(new_node, target)
+            if(d < distance[i]): 
+                distance[i] = d
+        min_weight += min_edge
+    return min_weight
+
+
+def heuristic(current, goals):
+    if not goals: return 0
+    dist_to_nearest = min(Manhattan(current, g) for g in goals)
+    return dist_to_nearest + MST(goals)
 
 
 def astar(maze):
@@ -61,8 +105,27 @@ def astar(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
     """
     # TODO: Write your code here
-    
-    return []
+    # start = maze.getStart()
+    # goal = maze.getObjectives()[0]
+
+    # prior_queue = [(Manhattan(start, goal), start)]
+    # parent = {start: None}
+    # cost = {start: 0}
+
+    # while prior_queue:
+    #     cur_score, current = heapq.heappop(prior_queue)
+    #     if(maze.isObjective(current[0], current[1])):
+    #         return construct_path(parent, current)
+    #     for neighbor in maze.getNeighbors(current[0], current[1]):
+    #         new_cost = cost[current] + 1
+    #         if neighbor not in cost or new_cost < cost[neighbor]:
+    #             cost[neighbor] = new_cost
+    #             parent[neighbor] = current
+    #             score = new_cost + Manhattan(neighbor, goal)
+    #             heapq.heappush(prior_queue, (score, neighbor))
+    # return []
+    return astar_multi(maze)
+        
 
 def astar_corner(maze):
     """
@@ -73,7 +136,8 @@ def astar_corner(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
         """
     # TODO: Write your code here
-    return []
+    # return []
+    return astar_multi(maze)
 
 def astar_multi(maze):
     """
@@ -85,6 +149,30 @@ def astar_multi(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
     """
     # TODO: Write your code here
+    start = maze.getStart()
+    initial_goals = tuple(sorted(maze.getObjectives()))
+    start_state = (start, initial_goals)
+    queue = [(heuristic(start, initial_goals), start_state)]
+    parent = {start_state: None}
+    cost = {start_state: 0}
+    while queue:
+        _, cur_state = heapq.heappop(queue)
+        cur_pos, remaining_goals = cur_state
+        if not remaining_goals:
+            return construct_path(parent, cur_state)
+        for neighbor in maze.getNeighbors(cur_pos[0], cur_pos[1]):
+            if neighbor in remaining_goals:
+                new_goals = tuple(g for g in remaining_goals if g != neighbor)
+            else:
+                new_goals = remaining_goals
+            next_state = (neighbor, new_goals)
+            new_cost = cost[cur_state] + 1
+            if(next_state not in cost or new_cost < cost[next_state]):
+                cost[next_state] = new_cost
+                parent[next_state] = cur_state
+                f_score = new_cost + heuristic(neighbor, new_goals)
+                heapq.heappush(queue, (f_score, next_state))
+
     return []
 
 
