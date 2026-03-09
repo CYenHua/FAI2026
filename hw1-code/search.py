@@ -153,12 +153,13 @@ def astar_multi(maze):
     initial_goals = tuple(sorted(maze.getObjectives()))
 
     start_state = (start, initial_goals)
-    queue = [(heuristic(start, initial_goals), start_state)]
+    queue = [(heuristic(start, initial_goals), 0, start_state)]
     parent = {start_state: None}
     cost = {start_state: 0}
     visited = set()
     while queue:
-        _, cur_state = heapq.heappop(queue)
+        _, cur_cost, cur_state = heapq.heappop(queue)
+        cur_cost = -cur_cost
         if cur_state in visited:
             continue
         visited.add(cur_state)
@@ -171,12 +172,12 @@ def astar_multi(maze):
             else:
                 new_goals = remaining_goals
             next_state = (neighbor, new_goals)
-            new_cost = cost[cur_state] + 1
+            new_cost = cur_cost + 1
             if(next_state not in cost or new_cost < cost[next_state]):
                 cost[next_state] = new_cost
                 parent[next_state] = cur_state
                 f_score = new_cost + heuristic(neighbor, new_goals)
-                heapq.heappush(queue, (f_score, next_state))
+                heapq.heappush(queue, (f_score, -new_cost, next_state))
 
     return []
 
@@ -191,24 +192,25 @@ def fast(maze):
     """
     # TODO: Write your code here
     def astar_single(maze, start, goal):
-        queue = [(Manhattan(start, goal), start)]
+        queue = [(Manhattan(start, goal), 0, start)]
         parent = {start: None}
         cost = {start: 0}
         visited = set()
 
         while queue:
-            f_score, cur = heapq.heappop(queue)
+            _, cur_cost, cur = heapq.heappop(queue)
+            cur_cost = -cur_cost
             if cur in visited:
                 continue
             visited.add(cur)
             if(cur == goal):
                 return construct_path(parent, cur)
             for neighbor in maze.getNeighbors(cur[0], cur[1]):
-                new_cost = cost[cur] + 1
+                new_cost = cur_cost + 1
                 if neighbor not in cost or new_cost < cost[neighbor]:
                     cost[neighbor] = new_cost
                     parent[neighbor] = cur
-                    heapq.heappush(queue, (new_cost + Manhattan(neighbor, goal), neighbor))
+                    heapq.heappush(queue, (new_cost + Manhattan(neighbor, goal), -new_cost, neighbor))
         return []
 
     current_pos = maze.getStart()
