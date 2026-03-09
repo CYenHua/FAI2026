@@ -151,12 +151,17 @@ def astar_multi(maze):
     # TODO: Write your code here
     start = maze.getStart()
     initial_goals = tuple(sorted(maze.getObjectives()))
+
     start_state = (start, initial_goals)
     queue = [(heuristic(start, initial_goals), start_state)]
     parent = {start_state: None}
     cost = {start_state: 0}
+    visited = set()
     while queue:
         _, cur_state = heapq.heappop(queue)
+        if cur_state in visited:
+            continue
+        visited.add(cur_state)
         cur_pos, remaining_goals = cur_state
         if not remaining_goals:
             return construct_path(parent, cur_state)
@@ -185,4 +190,38 @@ def fast(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
     """
     # TODO: Write your code here
-    return []
+    def astar_single(maze, start, goal):
+        queue = [(Manhattan(start, goal), start)]
+        parent = {start: None}
+        cost = {start: 0}
+        visited = set()
+
+        while queue:
+            f_score, cur = heapq.heappop(queue)
+            if cur in visited:
+                continue
+            visited.add(cur)
+            if(cur == goal):
+                return construct_path(parent, cur)
+            for neighbor in maze.getNeighbors(cur[0], cur[1]):
+                new_cost = cost[cur] + 1
+                if neighbor not in cost or new_cost < cost[neighbor]:
+                    cost[neighbor] = new_cost
+                    parent[neighbor] = cur
+                    heapq.heappush(queue, (new_cost + Manhattan(neighbor, goal), neighbor))
+        return []
+
+    current_pos = maze.getStart()
+    remaining_goals = list(maze.getObjectives())
+    path = [current_pos]
+    while remaining_goals:
+        nearest_goal = min(remaining_goals, key = lambda g: Manhattan(current_pos, g))
+        path_to_next = astar_single(maze, current_pos, nearest_goal)
+        path.extend(path_to_next[1:])
+        current_pos = nearest_goal
+        remaining_goals.remove(nearest_goal)
+    return path
+
+    
+
+ 
