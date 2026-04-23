@@ -1,0 +1,18 @@
+{
+    "players": [
+        ["src.players.TA.random_player", "RandomPlayer"],
+        ["src.players.TA.random_player", "RandomPlayer", {}],
+        ["src.players.TA.random_player", "RandomPlayer", {}, "label"],
+        {
+            "path": "src.players.b12902125.player_1",
+            "class": "Player_1"
+        }
+
+    ],
+    "engine": {
+        "n_players": 4,
+        "n_rounds": 10,
+        "verbose": true
+    },
+    "num_games": 1
+}
