@@ -4,8 +4,8 @@
         ["src.players.TA.random_player", "RandomPlayer", {}],
         ["src.players.TA.random_player", "RandomPlayer", {}, "label"],
         {
-            "path": "src.players.b12902125.player_1",
-            "class": "Player_1"
+            "path": "src.players.b12902125.best_player1",
+            "class": "BestPlayer1"
         }
 
     ],

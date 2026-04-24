@@ -1,6 +1,6 @@
 import math
 
-class Player_1:
+class BestPlayer1:
     def __init__(self, player_idx):
         self.player_idx = player_idx
 

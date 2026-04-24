@@ -8,9 +8,14 @@
     ],
     "players": [
         {
-            "path": "src.players.b12902125.player_1",
-            "class": "Player_1",
+            "path": "b12902125.best_player1",
+            "class": "BestPlayer1",
             "label": "MyAgent"
+        },
+        {
+            "path": "b12902125.best_player2",
+            "class": "BestPlayer2",
+            "label": "MyAgent2"
         },
         ["src.players.TA.public_baselines1", "Baseline4"],
         ["src.players.TA.public_baselines1", "Baseline5"],
