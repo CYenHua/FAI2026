@@ -12,10 +12,9 @@
         ["src.players.TA.public_baselines2", "Baseline10", {}, "B10"]
     ],
     "players": [
-        ["src.players.b12902125.best_player4", "BestPlayer4"],
-        ["src.players.b12902125.best_player5", "BestPlayer5"],
-        ["src.players.b12902125.best_player6", "BestPlayer6"],
-        ["src.players.b12902125.best_player7", "BestPlayer7"]
+        ["b12902125.best_player1", "BestPlayer1"],
+        ["b12902125.best_player2", "BestPlayer2"]
+        
     ],
     "engine": {
         "n_players": 4,

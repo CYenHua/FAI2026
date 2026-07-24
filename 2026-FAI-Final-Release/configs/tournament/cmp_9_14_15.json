@@ -1,0 +1,38 @@
+{
+    "baselines": [
+        ["src.players.TA.public_baselines2", "Baseline7", {}, "B7"],
+        ["src.players.TA.public_baselines2", "Baseline8", {}, "B8"],
+        ["src.players.TA.public_baselines2", "Baseline9", {}, "B9"],
+        ["src.players.TA.public_baselines2", "Baseline10", {}, "B10"]
+    ],
+    "players": [
+        ["src.players.b12902125.best_player13", "BestPlayer13"],
+        ["src.players.b12902125.best_player16", "BestPlayer16"],
+        ["src.players.b12902125.best_player17", "BestPlayer17"],
+        ["src.players.b12902125.best_player18", "BestPlayer18"],
+        ["src.players.b12902125.best_player32", "BestPlayer32"]
+      
+       
+
+    ],
+    "engine": {
+        "n_players": 4,
+        "n_rounds": 10,
+        "verbose": false,
+        "timeout": 1.0,
+        "timeout_buffer": 0.5
+    },
+    "tournament": {
+        "grading_mode": true,
+        "type": "random_partition",
+        "duplication_mode": "cycle",
+        "num_games_per_player": 600,
+        "num_workers": 2,
+        "scoring": {
+            "baseline_upper_pct": 0.8,
+            "baseline_lower_pct": 0.2,
+            "score_at_upper_pct": 80,
+            "score_at_lower_pct": 20
+        }
+    }
+}

@@ -1,0 +1,166 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{array}    % 讓表格內容可調整
+\usepackage{booktabs} % 美化表格
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage[a4paper, top=1cm, bottom=2cm, left=1cm, right=1cm]{geometry}
+\usepackage{xeCJK}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{changepage}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem} % 方便客製 enumerate 樣式
+\setCJKmainfont{Noto Serif CJK TC}  % 設置主要中文字型
+\setCJKsansfont{Noto Sans CJK TC}   % 設置無襯線字型
+\setCJKmonofont{Noto Sans Mono CJK TC}
+\definecolor{verylightgray}{gray}{0.95}
+
+\title{FAI Final Project Report}
+\author{B12902125 張晏華}
+\date{}
+
+\newcommand{\bp}[1]{\texttt{BP#1}}
+
+\begin{document}
+
+% \maketitle
+\begin{center}
+    {\LARGE \textbf{FAI Final Project Report}} \\[0.5cm]
+    {\large B12902125 張晏華} \\[0.8cm]
+\end{center}
+
+
+\section{Methods Tried}
+I selected a representative player from each of the methods I tested to compete against one another in order to compare their performance. The results are shown in Figure \ref{fig:standings}. The core idea of each player is summarized in the table below:
+\begin{center}\small
+\begin{tabularx}{\textwidth}{@{}l l c >{\raggedright\arraybackslash}X@{}}
+\toprule
+Family & Idea & Avg Rank & Outcome \\
+\midrule
+\bp{13} (final P2) & Determinized PIMC + opponent inference & \textbf{2.21} & \textbf{Best}; inference is the key lever \\
+\bp{16}  & \bp{13} + belief-floor robustness hedge & 2.23 & Strong + safer in unknown pools \\
+\bp{18} (final P1)& DUCT / regret-matching matrix game & 2.24 &  Robust best-response over a fixed archetype prior \\
+\bp{26} & Opponent-as-planner archetype & 2.25 & Local wash vs.\ \bp{13}; no real gain \\
+\bp{8} & Greedy / bust-probability heuristic & 2.30 & Fast, no opponent model; saturates \\
+\bp{29} & ISMCTS (search over my moves) & 2.30 & Heavier search, no opponent model; only mid-pack \\
+\bp{31} & AlphaZero self-play (search-free) & 2.33 & Matched \bp{13} at zero cost; did not exceed it \\
+\bp{17} & Diverse rollout / lookahead & 2.36 & Decorrelated 2nd-entry candidate \\
+\bp{30} & AlphaZero \emph{distillation} & 2.36 & Caps at teacher; search not representable \\
+\bp{19} & REINFORCE MLP policy (no search) & 2.75 & Fails; ties baseline B8, far below search \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\textbf{Key lessons.} (i) My PIMC + opponent-inference agents (\bp{13}/\bp{16}) top the field
+and are the only seats clearly above the strongest baseline B10 \\(ii) Learned policies without
+test-time search are bounded by their teacher: distillation (\bp{30}) saturates and pure
+REINFORCE (\bp{19}) collapses to $2.75$, level with a baseline.\\ (iii) Self-play AlphaZero (\bp{31})
+genuinely matched \bp{13}-class play at \emph{zero} inference cost ($2.33$), a strong result, yet
+still did not overtake the search agent. \\
+(iv) Heavier test-time search is not a free win: ISMCTS
+(\bp{29}, $2.30$) spends a far larger compute budget than a cheap rollout but only lands mid-pack,
+confirming that \emph{modeling opponents} is a better use of compute than searching deeper.\\
+\textbf{Choosing the final pair.} I did not
+simply submit the two top-ranked seats since \bp{13} and \bp{16} are the same engine differing only by a belief-floor value. Instead, I paired the strongest inference
+agent (\bp{13}, Agent 2) with \bp{18} (Agent 1), which reaches almost identical strength through a completely different mechanism. This gives a genuinely
+decorrelated pair.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\linewidth]{image.png}
+    \caption{Final standings of the 16-seat local round-robin (2400 games per seat): my candidate
+    agents, TA baselines B7--B10, and two random pads.}
+    \label{fig:standings}
+\end{figure}
+\section{Core Idea}
+
+
+\subsection*{Agent 1: Monte Carlo Sampling with Regret Matching}
+The core idea of Agent 1 (\texttt{BestPlayer1}) is to simplify the massive decision space using a pool of heuristic policies and apply Regret Matching to approximate a Nash Equilibrium.
+
+\begin{itemize}
+    \item \textbf{Heuristic Policy Pool:} The algorithm incorporates five fundamental decision-making logics (e.g., avoiding busts \texttt{\_bust\_pick}, tight fitting \texttt{\_tightfit\_pick}, lookahead high card \texttt{\_lookahead\_hi\_pick}). These heuristics efficiently and reasonably cover most tactical scenarios.
+    \item \textbf{Rollout Simulations:} During each decision phase, the system randomly distributes unseen cards to opponents (Monte Carlo Sampling) and simulates how each heuristic policy would play out until the end of the round.
+        \item \textbf{Regret Matching:} It cross-evaluates candidate cards from the agent's hand against the predefined policies, calculating the expected rank for each card against various opponent strategies. The algorithm then runs a fixed number of iterations (\texttt{\_solve\_regret}) to update the cumulative regret values for each action and accumulate the average strategy, ultimately selecting the card with the highest probability mass in this average strategy (equivalently, the lowest expected rank).
+
+\end{itemize}
+
+\subsection*{Agent 2: Opponent Belief Tracking and Depth-Limited Search}
+Agent 2 (\texttt{BestPlayer2}) advances the framework by introducing opponent modeling and a dynamically switching search mechanism. This allows it to adapt to opponent playstyles mid-game and perform precise game-tree evaluations in the endgame.
+
+\begin{itemize}
+    \item \textbf{Dynamic Belief Updating:} Agent 2 records and analyzes opponents' past play histories (\texttt{history\_matrix}). By calculating the consistency between actual opponent actions and the predictions of the built-in heuristic policies, the algorithm uses log-likelihood to update its belief weights for each opponent's playstyle in real-time. In subsequent simulations, the agent samples opponent behaviors based on these weights (\texttt{\_sample\_policy}) rather than assuming purely random play.
+    \item \textbf{Hybrid Decision Framework:}
+    \begin{itemize}
+        \item \textit{Early to Mid-Game:} It utilizes Monte Carlo rollouts similar to Agent 1, but the opponent behavior models are calibrated using the aforementioned beliefs, making the simulations far more representative of the actual match dynamics.
+        \item \textit{Endgame (Depth-Limited Search with PIMC):} When the number of remaining cards drops below a predefined threshold (e.g., 4 cards, controlled by \texttt{\_SEARCH\_DEPTH\_LIMIT}), the state space shrinks, and Agent 2 automatically switches to an exact recursive search (\texttt{\_search\_min}). This exhaustive evaluation is performed on determinized opponent hands (sampled via Perfect Information Monte Carlo), rather than the full hidden information tree. It evaluates all possible game continuations within these sampled subgames and selects the optimal endgame strategy using a comprehensive scoring function that prioritizes expected rank, using expected self-penalty points (\texttt{\_PEN\_LAMBDA}) as a secondary tie-breaker.
+    \end{itemize}
+\end{itemize}
+
+\section{Implementation}
+
+\subsection{Hyperparameter Tuning}
+The behavior and efficiency of both agents are heavily parameterized. Table \ref{tab:hyperparams} outlines the key hyperparameters configured and investigated during development.
+
+For Agent 1, the \texttt{\_PRIOR} weights were empirically derived by profiling baseline agents. Stronger baselines favored \texttt{\_bust\_pick} and \texttt{\_lookahead\_hi\_pick}, so they received the highest weights (0.30), while minority styles received monotonically decaying weights (0.20, 0.12, 0.08). To avoid overfitting, fine-tuning these parameters further was deemed unnecessary as this configuration already performed robustly. Additionally, controlled testing on the blending parameter \texttt{\_ADV} confirmed that 0.5 yielded the optimal performance.
+
+For Agent 2, the parameters \texttt{\_SEARCH\_DEPTH\_LIMIT} and \texttt{\_PEN\_LAMBDA} were kept at their default values of 4 and 0.003. Setting the depth limit to 4 ensures that the recursive tree search completes safely within the execution time limit without causing any timeout violations. Meanwhile, the penalty coefficient $\lambda = 0.003$ serves its purpose by preventing the agent from making short-sighted plays that blindly avoid immediate points but ruin the overall tournament ranking. There was no further tuning attempted, as these settings proved sufficient and highly effective in practice.
+
+\begin{table}[h]
+\centering
+
+\caption{Key Hyperparameters for Agent 1 and Agent 2}
+\label{tab:hyperparams}
+\begin{tabular}{lcl}
+\hline
+\textbf{Hyperparameter} & \textbf{Value} & \textbf{Description} \\
+\hline
+\multicolumn{3}{l}{\textit{Agent 1 }} \\
+\texttt{\_ADV}          & 0.5            & Weight balancing the prior policy and regret-matching strategy. \\
+\texttt{\_RM\_ITERS}    & 200            & Iterations for the Regret Matching solver. \\
+\texttt{\_PRIOR}        & \small [0.3, 0.3, 0.2, 0.12, 0.08]        & Initial belief distribution for the 5 heuristic profiles. \\
+\hline
+\multicolumn{3}{l}{\textit{Agent 2 }} \\
+\texttt{\_SEARCH\_DEPTH\_LIMIT}& 4              & Hand-size threshold triggering the exact endgame search. \\
+\texttt{\_PEN\_LAMBDA}  & 0.003          & Trade-off weight between expected rank and actual penalty. \\
+\texttt{\_BELIEF\_FLOOR}& 0.06           & Min. probability in opponent models to prevent over-fitting \& $\log(0)$. \\
+\texttt{\_INFER\_SAMPLES}& 6             & Monte Carlo samples drawn to infer opponent archetypes per step. \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Algorithmic and Code Optimizations}
+
+
+\begin{itemize}
+    \item \textbf{Action Space Pruning:} Instead of evaluating every single card in a large hand through the expensive regret matching solver, Agent 1 utilizes \texttt{\_candidate\_indices} to filter down the action space. By pre-selecting candidate cards recommended by the underlying heuristics, the matrix dimensionality for the regret computation is severely truncated, yielding an order-of-magnitude speedup.
+    \item \textbf{Lightweight State Abstraction:} Full replication of the grid board state during deep rollouts is computationally prohibitive. Both agents abstract the game board into three primitive one-dimensional arrays: \texttt{row\_ends} (the trailing card of each row), \texttt{row\_lens} (the element counts), and \texttt{row\_pens} (the pre-calculated point totals). Operations like card placement and scoring are conducted directly on these flat lists, maximizing rollout throughput.
+    \item \textbf{Incremental Belief Tracking:} In Agent 2, evaluating opponent histories across all past rounds is optimized via an incremental processing pointer (\texttt{self.\_proc}). Instead of recalculating log-likelihood scores from round $0$ at every turn, the belief routine only digests newly appended game matrix rows, converting an otherwise $O(T^2)$ history-parsing bottleneck into an efficient $O(1)$ amortized update.
+    \item \textbf{Asymmetric Time Budgeting:} To prevent timeout violations while maximizing CPU utilization, both agents employ an anytime loop but with tailored budgets. Agent 1 utilizes a conservative 0.70s budget to accommodate the high execution-time variance of pure Monte Carlo rollouts. Conversely, Agent 2 is granted a larger 0.90s budget, capitalizing on the highly predictable execution time of its exact Minimax search in the endgame.
+\end{itemize}
+
+\section{Self-Assessment}
+\textbf{What I did well:} The single most valuable decision was identifying opponent modeling, not raw search depth, as the dominant factor. Once I committed to determinized PIMC with Bayesian policy inference, a cheap search could route penalties onto exploitable seats. Working in strictly single-threaded pure Python, I squeezed out determinization count through precomputed board arrays, incremental $O(1)$ belief updates, and an anytime loop that safely maximizes the time budget regardless of machine load.
+
+\noindent \textbf{What I struggled with:} My biggest lesson was that local proxy evaluations did not track the real platform. A classmate (b12902023) had set up a public server for everyone to upload their players and compete against each other. For instance, my ISMCTS variant looked highly competitive in my local test, but collapsed when uploaded to this public server ($\sim$216 vs. $\sim$257 for the PIMC agents). Therefore, I had to re-anchor every decision on the real-world feedback from that public platform. Furthermore, I repeatedly failed to make a learned policy surpass test-time search. Reinforce and AlphaZero distillation both saturated at their teacher's strength. Learning a value good enough to replace search proved harder than expected for this game. Finally, on shared, loaded hardware, wall-clock comparisons were unreliable, which forced me to switch to fixed-work budgets. The same noise made fine hyperparameter tuning slow, so a few design choices (e.g. the opponent prior in the regret-matching variant) remained principled hand-set values rather than fully swept optima.
+
+\section{Strategic Profiling}
+\textbf{Agent 1:} Performs well against "standard" opponents who play predictably to minimize penalties, as its \texttt{\_PRIOR} distribution is tailored to mirror these conventional baselines. However, it struggles against tables dominated by highly unpredictable players or trolls, as it assigns very low probabilities to edge-case behaviors (e.g., \texttt{\_low\_pick}) and may fail to anticipate illogical moves.
+
+ \noindent \textbf{Agent 2:} Excels against players with a consistent playstyle by tracking histories and dynamically updating log-likelihood beliefs to heavily exploit them. Its endgame exact search also punishes opponents lacking deep calculation. Conversely, it is vulnerable to highly deceptive opponents who drastically switch styles mid-game, as the cumulative historical data will cause its belief weights to lag, leading to mispredictions.
+
+\section{Agent Comparison}
+The trade-offs between the two agents can be summarized across three dimensions:
+\begin{itemize}
+    \item \textbf{Adaptability:} Agent 1 prioritizes robustness, using a fixed prior to approximate a Nash Equilibrium, making it highly resilient against unknown or strong opponents. Agent 2 sacrifices baseline robustness for targeted exploitation, dynamically adapting to predictable players but risking overfitting if opponents suddenly shift styles.
+    \item \textbf{Resource Allocation:} Agent 1 maximizes computational efficiency through wide Monte Carlo rollouts (breadth). Agent 2 allocates its budget towards deep inference and exact endgame PIMC search (depth).
+    \item \textbf{Risk Tolerance:} Agent 1 strictly optimizes for expected rank, making it willing to accept high-penalty gambles if it improves final placement. Agent 2 is more risk-averse; by incorporating the \texttt{\_PEN\_LAMBDA} weight, it balances rank optimization with damage control.
+\end{itemize}
+
+
+
+
+\end{document}
